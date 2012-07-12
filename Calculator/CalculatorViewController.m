@@ -25,6 +25,12 @@
 @synthesize brain = _brain;
 @synthesize testVariableValues = _testVariableValues;
 
+#pragma mark -
+#pragma mark Custom getters and setters
+
+/*
+** Lazy instantiation getter for property: brain
+*/
 - (CalculatorBrain *)brain
 {
     if (!_brain)
@@ -32,6 +38,12 @@
     return _brain;
 }
 
+#pragma mark -
+#pragma mark IBActions for buttons
+
+/*
+** IBActions for the different kind of buttons
+*/
 - (IBAction)digitPressed:(UIButton *)sender 
 {
     NSString *digit = [sender currentTitle];
@@ -50,11 +62,13 @@
 {
     if (!self.userIsInTheMiddleOfEnteringANumber)
     {
-        self.display.text = [NSString stringWithString:@"0."];
+		// User is NOT in the middle of entering a number and first input is a ".".
+        self.display.text = @"0.";
         self.userIsInTheMiddleOfEnteringANumber = YES;
     }
     else if ([self.display.text rangeOfString:@"."].location == NSNotFound)
     {
+		// User IS in the middle of entering a number and there is not a "." in the display.
         self.display.text = [self.display.text stringByAppendingString:@"."];
     }
 }
@@ -63,9 +77,7 @@
 {
     double value = [self.display.text doubleValue];
     [self.brain pushOperand:value];
-
     [self updateDisplayLabels];
-    
     self.userIsInTheMiddleOfEnteringANumber = NO;
 }
 
@@ -74,8 +86,7 @@
     if (self.userIsInTheMiddleOfEnteringANumber)
         [self enterPressed];
     NSString *operation = [sender currentTitle];
-    [self.brain performOperation:operation];
-    
+    [self.brain pushOperation:operation];
     [self updateDisplayLabels];
 }
 
@@ -83,12 +94,20 @@
 {
     self.userIsInTheMiddleOfEnteringANumber = NO;
     [self.brain clearAll];
-    
     [self updateDisplayLabels];
 }
 
 - (IBAction)undoPressed 
 {
+	/*
+	** Undo: 
+	** - If the use is entering a number, remove the last entered digit. 
+	** - If the undo removes the last remaining digit: 
+	**		- show the result of the current program
+	**		- set status so user is not in the middle of entering a number any more.
+	** - If the user is NOT entering a number, remove the top of the program stack.
+	*/
+	
     if (self.userIsInTheMiddleOfEnteringANumber)
     {
         NSUInteger displayStringLength = [self.display.text length];
@@ -115,9 +134,10 @@
         [self enterPressed];
     NSString *variable = [sender currentTitle];
     [self.brain pushVariable:variable];
+    [self updateDisplayLabels];
 }
 
-- (IBAction)changeSign:(UIButton *)sender
+- (IBAction)changeSignPressed:(UIButton *)sender
 {
     if (self.userIsInTheMiddleOfEnteringANumber)
         self.display.text = [NSString stringWithFormat:@"%g", -[self.display.text doubleValue]];
@@ -125,30 +145,14 @@
         [self operationPressed:sender];
 }
 
-- (void)updateDisplayLabels
-{
-    double result = [CalculatorBrain runProgram:self.brain.program usingVariables:self.testVariableValues];
-    self.display.text = [NSString stringWithFormat:@"%g", result];
-    self.sendToBrainDisplay.text = [CalculatorBrain descriptionOfProgram:self.brain.program];
-
-    self.variablesDisplay.text = @"";
-    NSSet *variablesInProgram = [CalculatorBrain variablesUsedInProgram:self.brain.program];
-    for (id item in variablesInProgram) 
-    {
-        self.variablesDisplay.text = [self.variablesDisplay.text stringByAppendingFormat:@" %@=%@", 
-                                      item, 
-                                      [self.testVariableValues objectForKey:item]];
-    }
-}
-
 - (IBAction)testVariableValuesPressed:(UIButton *)sender
 {
     NSString *testSetTitle = [sender currentTitle];
     if ([testSetTitle isEqualToString:@"Test 1"])
         self.testVariableValues = [NSDictionary dictionaryWithObjectsAndKeys:
-                                   [NSNumber numberWithFloat:125.2], @"x",
-                                   [NSNumber numberWithFloat:1.25],  @"a",
-                                   [NSNumber numberWithFloat:-1.25], @"b",
+                                   [NSNumber numberWithFloat:25], @"x",
+                                   [NSNumber numberWithFloat:2.25],  @"a",
+                                   [NSNumber numberWithFloat:-1.01], @"b",
                                    nil];
     else if ([testSetTitle isEqualToString:@"Test 2"])
         self.testVariableValues = [NSDictionary dictionaryWithObjectsAndKeys:
@@ -160,6 +164,39 @@
         self.testVariableValues = nil;
     
     [self updateDisplayLabels];
+}
+
+#pragma mark -
+#pragma mark Miscellaneous methods
+
+- (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation
+{
+    return UIInterfaceOrientationIsPortrait(toInterfaceOrientation);
+}
+
+- (void)updateDisplayLabels
+{
+	// Result is either an NSNumber (program valid and calculable) or an NSString (program invalid of calculation error)
+    id result = [CalculatorBrain runProgram:self.brain.program usingVariables:self.testVariableValues];
+	
+	// Update main result display.
+	if ([result isKindOfClass:[NSString class]])
+		self.display.text = [NSString stringWithFormat:@"%@", result];
+	else
+		self.display.text = [NSString stringWithFormat:@"%g", [result doubleValue]];
+		
+	// Update 'brain' display with description of program
+    self.sendToBrainDisplay.text = [CalculatorBrain descriptionOfProgram:self.brain.program];
+
+	// Update 'variables' display
+    self.variablesDisplay.text = @"";
+    NSSet *variablesInProgram = [CalculatorBrain variablesUsedInProgram:self.brain.program];
+    for (id item in variablesInProgram) 
+    {
+        self.variablesDisplay.text = [self.variablesDisplay.text stringByAppendingFormat:@" %@=%@", 
+                                      item, 
+                                      [self.testVariableValues objectForKey:item]];
+    }
 }
 
 - (void)viewDidUnload {
