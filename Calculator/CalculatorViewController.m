@@ -151,7 +151,7 @@
     if ([testSetTitle isEqualToString:@"Test 1"])
         self.testVariableValues = [NSDictionary dictionaryWithObjectsAndKeys:
                                    [NSNumber numberWithFloat:25], @"x",
-                                   [NSNumber numberWithFloat:2.25],  @"a",
+                                   [NSNumber numberWithFloat:0.00],  @"a",
                                    [NSNumber numberWithFloat:-1.01], @"b",
                                    nil];
     else if ([testSetTitle isEqualToString:@"Test 2"])
